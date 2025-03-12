@@ -1,45 +1,46 @@
 const mongoose = require("mongoose");
 
 const userSchema = new mongoose.Schema({
-  // firstName: { type: String, required: true },
-  // lastName: { type: String, required: true },
+  firstName: { type: String, required: true },
+  lastName: { type: String, required: true },
   userName: { type: String, required: true, unique: true },
   email: { type: String, required: true, unique: true },
-  // phoneNumber: { type: String, required: true, unique: true },
-  // whatsappNumber: { type: String, required: false },
-  // address: { type: String, required: true },
+  phoneNumber: { type: String, required: true, unique: true },
+  whatsappNumber: { type: String, required: false },
+  address: { type: String, required: true },
   verificationToken: { type: String },
   verificationCode: { type: String },
   verificationTokenExpires: { type: Date },
   isVerified: { type: Boolean, default: false }, // This field will indicate if the email is verified
-  // city: {
-  //   type: String,
-  //   enum: [
-  //     "Karachi",
-  //     "Lahore",
-  //     "Islamabad",
-  //     "Rawalpindi",
-  //     "Faisalabad",
-  //     "Peshawar",
-  //     "Quetta",
-  //     "Multan",
-  //     "Sialkot",
-  //     "Gujranwala",
-  //     "Bahawalpur",
-  //     "Hyderabad",
-  //     "Sargodha",
-  //     "Sukkur",
-  //     "Mardan",
-  //     "Abbottabad",
-  //     "Swat",
-  //     "Larkana",
-  //     "Sheikhupura",
-  //     "Multan",
-  //   ],
-  //   required: true,
-  // },
+  city: {
+    type: String,
+    enum: [
+      "Karachi",
+      "Lahore",
+      "Islamabad",
+      "Rawalpindi",
+      "Faisalabad",
+      "Peshawar",
+      "Quetta",
+      "Multan",
+      "Sialkot",
+      "Gujranwala",
+      "Bahawalpur",
+      "Hyderabad",
+      "Sargodha",
+      "Sukkur",
+      "Mardan",
+      "Abbottabad",
+      "Swat",
+      "Larkana",
+      "Sheikhupura",
+      "Multan",
+    ],
+    required: true,
+  },
   userField: {
     type: String,
+    required: true,
     enum: ["buyer", "seller"],
     required: true, // Jab register ho to yeh zaroor select ho
   },
@@ -53,12 +54,14 @@ const userSchema = new mongoose.Schema({
   sellerDetails: {
     shopLocation: {
       type: String,
+      required: true,
       required: function () {
         return this.userField === "seller";
       },
     },
     deliveryRange: {
       type: Number,
+      required: true,
       enum: [1, 2, 3],
       required: function () {
         return this.userField === "seller";
@@ -66,6 +69,7 @@ const userSchema = new mongoose.Schema({
     },
     dairySource: {
       type: String,
+      required: true,
       enum: ["self Dariry shop", "Buy from market"],
       required: function () {
         return this.userField === "seller";
