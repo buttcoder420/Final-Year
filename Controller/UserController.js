@@ -55,7 +55,7 @@ const registerUser = async (req, res) => {
       sellerDetails,
     } = req.body;
 
-    // Validation
+    // Validation for common fields
     if (
       !firstName ||
       !lastName ||
@@ -72,6 +72,20 @@ const registerUser = async (req, res) => {
         .send({ success: false, message: "All fields are required" });
     }
 
+    // Additional validation for seller-specific fields
+    if (userField === "seller") {
+      if (
+        !sellerDetails.shopLocation ||
+        !sellerDetails.deliveryRange ||
+        !sellerDetails.dairySource
+      ) {
+        return res.status(400).send({
+          success: false,
+          message: "All seller-specific fields are required.",
+        });
+      }
+    }
+
     // Check if user already exists
     const existingUser = await UserModel.findOne({
       $or: [{ email }, { userName }, { phoneNumber }],
@@ -79,7 +93,7 @@ const registerUser = async (req, res) => {
     if (existingUser) {
       return res
         .status(400)
-        .json({ message: "Email, Username or phone number already exist." });
+        .json({ message: "Email, Username, or phone number already exist." });
     }
 
     // Generate verification code
@@ -100,7 +114,7 @@ const registerUser = async (req, res) => {
       city,
       userField,
       password: hashedPassword,
-      sellerDetails,
+      sellerDetails, // Store seller details if user is a seller
       verificationCode,
     });
 
