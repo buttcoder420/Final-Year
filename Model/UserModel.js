@@ -40,7 +40,7 @@ const userSchema = new mongoose.Schema({
   },
   userField: {
     type: String,
-    required: true,
+
     enum: ["buyer", "seller"],
     required: true, // Jab register ho to yeh zaroor select ho
   },
@@ -54,14 +54,14 @@ const userSchema = new mongoose.Schema({
   sellerDetails: {
     shopLocation: {
       type: String,
-      required: true,
+     
       required: function () {
         return this.userField === "seller";
       },
     },
     deliveryRange: {
       type: Number,
-      required: true,
+      
       enum: [1, 2, 3],
       required: function () {
         return this.userField === "seller";
@@ -69,7 +69,7 @@ const userSchema = new mongoose.Schema({
     },
     dairySource: {
       type: String,
-      required: true,
+ 
       enum: ["self Dariry shop", "Buy from market"],
       required: function () {
         return this.userField === "seller";
