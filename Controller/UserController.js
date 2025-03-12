@@ -5,10 +5,14 @@ require("dotenv").config();
 const nodemailer = require("nodemailer");
 const crypto = require("crypto");
 
+const verificationCache = new Map(); // Temporarily store user data for verification
+
+// Generate verification code
 function generateVerificationCode() {
-  return crypto.randomBytes(4).toString("hex").toUpperCase(); // Random 4-byte code
+  return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
+// Send verification email
 const sendVerificationEmail = async (email, verificationCode) => {
   const transporter = nodemailer.createTransport({
     service: "gmail",
@@ -34,7 +38,7 @@ const sendVerificationEmail = async (email, verificationCode) => {
   }
 };
 
-// Register user with email verification
+// Register user but don't save to DB yet
 const registerUser = async (req, res) => {
   try {
     const {
@@ -63,10 +67,9 @@ const registerUser = async (req, res) => {
       !userField ||
       !password
     ) {
-      return res.status(400).send({
-        success: false,
-        message: "All fields are required",
-      });
+      return res
+        .status(400)
+        .send({ success: false, message: "All fields are required" });
     }
 
     // Check if user already exists
@@ -79,65 +82,33 @@ const registerUser = async (req, res) => {
         .json({ message: "Email, Username or phone number already exist." });
     }
 
-    // Generate 6-digit verification code
-    const verificationCode = Math.floor(
-      100000 + Math.random() * 900000
-    ).toString();
+    // Generate verification code
+    const verificationCode = generateVerificationCode();
 
     // Password Hashing
     const hashedPassword = await HashPassword(password, 10);
 
-    // Seller fields check
-    let newUser;
-    if (userField === "seller") {
-      if (
-        !sellerDetails ||
-        !sellerDetails.shopLocation ||
-        !sellerDetails.deliveryRange ||
-        !sellerDetails.dairySource
-      ) {
-        return res.status(400).json({ message: "All fields are required" });
-      }
-      newUser = new UserModel({
-        firstName,
-        lastName,
-        userName,
-        email,
-        phoneNumber,
-        whatsappNumber,
-        address,
-        city,
-        userField,
-        password: hashedPassword,
-        sellerDetails,
-        verificationCode: verificationCode,
-        isVerified: false,
-      });
-    } else {
-      newUser = new UserModel({
-        firstName,
-        lastName,
-        userName,
-        email,
-        phoneNumber,
-        whatsappNumber,
-        address,
-        city,
-        userField,
-        verificationCode: verificationCode,
-        isVerified: false,
-      });
-    }
-
-    // Save user to the database
-    await newUser.save();
+    // Temporarily store user data
+    verificationCache.set(email, {
+      firstName,
+      lastName,
+      userName,
+      email,
+      phoneNumber,
+      whatsappNumber,
+      address,
+      city,
+      userField,
+      password: hashedPassword,
+      sellerDetails,
+      verificationCode,
+    });
 
     // Send verification email
     await sendVerificationEmail(email, verificationCode);
 
     res.status(201).json({
-      message: "User registered! Check your email for the verification code..",
-      user: newUser,
+      message: "Verification code sent! Check your email.",
     });
   } catch (error) {
     console.error("Error in user registration:", error);
@@ -145,28 +116,48 @@ const registerUser = async (req, res) => {
   }
 };
 
-// Verify user after receiving code from email
+// Verify user and save data to DB
 const verifyEmail = async (req, res) => {
-  const { email, code } = req.body; // Token ki jagah code aur email lenge
+  const { email, code } = req.body;
 
   try {
-    // Find user by email and check if code matches
-    const user = await UserModel.findOne({ email, verificationCode: code });
+    const userData = verificationCache.get(email);
 
-    if (!user) {
+    if (!userData || userData.verificationCode !== code) {
       return res
         .status(400)
         .json({ message: "Invalid verification code or email." });
     }
 
-    // Mark the user as verified
-    user.isVerified = true;
-    user.verificationCode = undefined; // Code remove kar do takay dubara use na ho
-    await user.save();
+    // Remove verification code before saving
+    delete userData.verificationCode;
 
-    res
-      .status(200)
-      .json({ message: "Email successfully verified! You can now log in." });
+    // Save user to database
+    const newUser = new UserModel({ ...userData, isVerified: true });
+    await newUser.save();
+
+    // Remove from cache
+    verificationCache.delete(email);
+
+    // Generate JWT token for auto-login
+    const token = JWT.sign({ _id: newUser._id }, process.env.JWT_SECRET, {
+      expiresIn: "7d",
+    });
+
+    res.status(200).json({
+      message: "Email successfully verified! Login successful.",
+      user: {
+        id: newUser._id,
+        firstName: newUser.firstName,
+        lastName: newUser.lastName,
+        userName: newUser.userName,
+        email: newUser.email,
+        phoneNumber: newUser.phoneNumber,
+        city: newUser.city,
+        role: newUser.role,
+      },
+      token,
+    });
   } catch (error) {
     console.error("Error in email verification:", error);
     res.status(500).json({ message: "Server error. Please try again later." });
