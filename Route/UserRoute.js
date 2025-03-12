@@ -12,6 +12,6 @@ router.post("/register", registerUser);
 router.post("/login", loginUser);
 
 // Verify Email Route
-router.get("/verify-email", verifyEmail);
+router.post("/verify-email", verifyEmail);
 
 module.exports = router;
